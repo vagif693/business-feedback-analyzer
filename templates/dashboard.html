@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Business Copilot AI</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: #343541; color: #fff; font-family: 'Inter', Arial, sans-serif; }
+        .main { max-width: 700px; margin: 36px auto; background: #444654;
+            border-radius: 16px; box-shadow: 0 8px 32px 0 rgba(0,0,0,0.16);
+            padding: 0; display: flex; flex-direction: column; min-height: 78vh; }
+        .header { background: #202123; padding: 24px 36px; font-size: 1.4rem;
+            font-weight: bold; border-radius: 16px 16px 0 0; border-bottom: 1px solid #23272f; }
+        .chat { flex: 1; padding: 28px 20px 110px 20px; overflow-y: auto; background: #444654; min-height: 300px; }
+        .bubble-row { display: flex; gap: 16px; margin-bottom: 20px; align-items: flex-end; }
+        .avatar { width: 40px; height: 40px; border-radius: 50%; background: #202123;
+            display: flex; align-items: center; justify-content: center; font-size: 1.1rem; font-weight: bold;
+            color: #fff; margin-bottom: 6px; flex-shrink: 0; }
+        .bubble-user { background: #3ae374; color: #222; padding: 14px 18px;
+            border-radius: 14px 14px 4px 14px; word-break: break-word; }
+        .bubble-ai { background: #23272f; color: #fff; padding: 14px 18px;
+            border-radius: 14px 14px 14px 4px; border: 1px solid #3d3f4b; word-break: break-word; }
+        .timestamp { font-size: .8em; color: #aaa; margin-left: 4px; }
+        .footer-bar { position: absolute; left: 0; bottom: 0; width: 100%;
+            padding: 18px 24px; background: #343541; z-index: 2; border-radius: 0 0 16px 16px;
+            display: flex; gap: 10px; }
+        .footer-main { max-width: 700px; margin: 0 auto; }
+        .input-chat { flex-grow: 1; border-radius: 10px; border: none; padding: 14px; font-size: 1rem;
+            background: #202123; color: #fff; resize: none; }
+        .btn-send { background: #3ae374; color: #151718; font-weight: bold; border-radius: 8px; border: none; padding: 10px 16px; }
+        .btn-send:active { background: #26ce60; }
+        .input-file { display: inline-block; padding: 0.3rem 0.6rem; background: #202123; color: #eee;
+            border-radius: 8px; font-size: 0.96rem; border: none; }
+        .msg-info { text-align: center; margin: 18px auto; padding: 12px;
+            border-radius: 8px; background: #23272f; color: #e4e8f3; }
+        .error-msg { text-align: center; margin: 18px auto; padding: 12px; border-radius: 8px; background: #850000; color: #fff;}
+        .success-msg { text-align: center; margin: 18px auto; padding: 12px; border-radius: 8px; background: #222c1e; color: #b0ffd2;}
+        @media (max-width:800px){ .main, .footer-main { max-width: 98vw; } .chat { max-width: 98vw;} }
+    </style>
+</head>
+<body>
+    <div class="main position-relative">
+        <div class="header">Business Copilot AI</div>
+        <!-- File upload -->
+        <form method="POST" enctype="multipart/form-data" style="padding:24px 24px 0 24px;" autocomplete="off">
+            <label class="mb-2">Upload a document to analyze:</label>
+            <input type="file" name="datafile" class="input-file" id="datafile" required>
+            <button class="btn btn-primary" type="submit" name="upload_file" value="true">Upload & Analyze</button>
+            {% if upload_msg %}
+            <div class="success-msg">{{ upload_msg }}</div>
+            {% endif %}
+            {% if error_msg %}
+            <div class="error-msg">{{ error_msg }}</div>
+            {% endif %}
+        </form>
+        <!-- messages -->
+        <div class="chat" id="chat">
+            {% if chat_history %}
+                {% for m in chat_history %}
+                    <div class="bubble-row {% if m['role']=="user" %}justify-content-end{% endif %}">
+                        {% if m['role']=="ai" %}
+                            <div class="avatar">AI</div>
+                            <div>
+                                <div class="bubble-ai">{{ m['msg']|safe }}</div>
+                                <div class="timestamp">{{ m['time'] }}</div>
+                            </div>
+                        {% else %}
+                            <div>
+                                <div class="bubble-user">{{ m['msg']|safe }}</div>
+                                <div class="timestamp">{{ m['time'] }}</div>
+                            </div>
+                            <div class="avatar" style="background:#3ae374;color:#222;">U</div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            {% elif not uploaded %}
+                <div class="msg-info mt-4">
+                    👋 <b>Welcome!</b> <br>
+                    Upload any CSV, Excel, PDF, TXT, DOCX, or image file.<br>
+                    Then ask questions, get summaries, or dig deeper into your file with AI chat!
+                </div>
+            {% endif %}
+        </div>
+        <!-- Chat form -->
+        <form class="footer-bar footer-main" method="POST" autocomplete="off">
+            <input type="hidden" name="send_message" value="true">
+            <textarea name="user_message" class="input-chat" placeholder="Type a message..." rows="1" {% if not uploaded %}disabled{% endif %}></textarea>
+            <button class="btn-send" type="submit" {% if not uploaded %}disabled{% endif %}>Send</button>
+        </form>
+    </div>
+    <script>
+        function scrollChatBottom() {
+            var chatDiv = document.getElementById("chat");
+            if(chatDiv) chatDiv.scrollTop = chatDiv.scrollHeight;
+        }
+        window.onload = scrollChatBottom;
+        window.onresize = scrollChatBottom;
+        document.querySelector('.input-chat').focus();
+    </script>
+</body>
+</html>

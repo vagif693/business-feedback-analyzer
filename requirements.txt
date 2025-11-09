@@ -1,2 +1,7 @@
-flask
+Flask
+pandas
+pdfplumber
+python-docx
+pytesseract
+pillow
 requests
