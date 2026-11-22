@@ -2,11 +2,33 @@ import sys, os, datetime, logging, uuid
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from flask import Flask, request, render_template, session
 from werkzeug.utils import secure_filename
+from dotenv import load_dotenv
 from src.data_loader import load_data
 from src.ollama_api import ask_ollama
 
+load_dotenv()
+
+PLACEHOLDER_KEYS = {"", "change-me", "supersecret"}
+
+
+def load_secret_key():
+    """Read the session-signing key from the environment and refuse to start without a real one."""
+    key = os.environ.get("FLASK_SECRET_KEY", "")
+    if key in PLACEHOLDER_KEYS or len(key) < 32:
+        raise RuntimeError(
+            "FLASK_SECRET_KEY is missing or too weak. Copy .env.example to .env and set a random key "
+            "of at least 32 characters."
+        )
+    return key
+
+
+def debug_enabled():
+    """Debug mode is off unless FLASK_DEBUG=1 is set explicitly."""
+    return os.environ.get("FLASK_DEBUG") == "1"
+
+
 app = Flask(__name__, template_folder="../templates", static_folder="../static")
-app.secret_key = 'supersecret'
+app.secret_key = load_secret_key()
 UPLOAD_FOLDER = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data', 'uploads'))
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
@@ -94,4 +116,4 @@ def index():
     )
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="127.0.0.1", port=5000, debug=debug_enabled())
