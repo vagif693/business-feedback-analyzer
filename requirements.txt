@@ -1,7 +1,10 @@
 Flask
+Flask-WTF
+gunicorn
 pandas
 pdfplumber
 python-docx
 pytesseract
 pillow
 requests
+python-dotenv
