@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install -r requirements.txt pytest
+      - run: python -m pytest -v
+
+  bandit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install bandit
+      - run: bandit -r src
+
+  semgrep:
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+    steps:
+      - uses: actions/checkout@v4
+      - run: semgrep scan --config p/python --config p/flask --error --metrics=off src templates
+
+  pip-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install pip-audit
+      - run: pip-audit -r requirements.txt
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t business-feedback-analyzer .
+      - name: App refuses to start without a secret key
+        run: |
+          if docker run --rm business-feedback-analyzer python -c "import src.app"; then
+            echo "The app started without FLASK_SECRET_KEY"
+            exit 1
+          fi
+      - name: Run locked-down container
+        run: |
+          docker run -d --name app -p 127.0.0.1:8000:8000 \
+            -e FLASK_SECRET_KEY="$(python3 -c 'import secrets; print(secrets.token_hex(32))')" \
+            --read-only --tmpfs /tmp --tmpfs /app/data/uploads \
+            --cap-drop ALL --security-opt no-new-privileges \
+            business-feedback-analyzer
+          for i in $(seq 1 30); do
+            curl -fs http://127.0.0.1:8000/ > /dev/null && break
+            sleep 1
+          done
+      - name: Page loads with CSRF tokens
+        run: curl -fs http://127.0.0.1:8000/ | grep -q 'name="csrf_token"'
+      - name: Runs as non-root user
+        run: test "$(docker exec app id -u)" = "10001"
+      - name: Container logs
+        if: always()
+        run: docker logs app || true
