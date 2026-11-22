@@ -1,3 +1,7 @@
+import os
+
+os.environ.setdefault("FLASK_SECRET_KEY", "test-only-key-0123456789abcdef0123456789")
+
 import pytest
 
 from src.app import app as flask_app
