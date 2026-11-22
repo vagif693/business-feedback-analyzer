@@ -1,9 +1,10 @@
 import json
+import os
 import logging
 
 import requests
 
-OLLAMA_URL = "http://localhost:11434/api/generate"
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434/api/generate")
 CONNECT_TIMEOUT = 5
 READ_TIMEOUT = 120
 
