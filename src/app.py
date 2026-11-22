@@ -1,13 +1,27 @@
-import sys, os, datetime
+import sys, os, datetime, logging, uuid
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from flask import Flask, request, render_template, session
+from werkzeug.utils import secure_filename
 from src.data_loader import load_data
 from src.ollama_api import ask_ollama
 
 app = Flask(__name__, template_folder="../templates", static_folder="../static")
 app.secret_key = 'supersecret'
-UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), '../data')
+UPLOAD_FOLDER = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data', 'uploads'))
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
+ALLOWED_EXTENSIONS = {'csv', 'xls', 'xlsx', 'txt', 'pdf', 'docx', 'png', 'jpg', 'jpeg'}
+
+log = logging.getLogger(__name__)
+
+
+def allowed_extension(filename):
+    """Return the lower-case extension if it is allowed, otherwise None."""
+    name = secure_filename(filename or '')
+    if '.' not in name:
+        return None
+    ext = name.rsplit('.', 1)[1].lower()
+    return ext if ext in ALLOWED_EXTENSIONS else None
 
 def nice_time():
     return datetime.datetime.now().strftime("%H:%M")
@@ -32,8 +46,15 @@ def index():
         # File upload
         if "upload_file" in request.form:
             newfile = request.files.get("datafile", None)
-            if newfile and newfile.filename:
-                fpath = os.path.join(app.config['UPLOAD_FOLDER'], newfile.filename)
+            ext = allowed_extension(newfile.filename) if newfile else None
+            if newfile is None or not newfile.filename:
+                error_msg = "Please choose a file to upload."
+            elif ext is None:
+                error_msg = "Unsupported file type. Please upload CSV, Excel, TXT, PDF, DOCX, or an image."
+            else:
+                upload_dir = app.config['UPLOAD_FOLDER']
+                os.makedirs(upload_dir, exist_ok=True)
+                fpath = os.path.join(upload_dir, f"{uuid.uuid4().hex}.{ext}")
                 newfile.save(fpath)
                 try:
                     df = load_data(fpath)
@@ -43,10 +64,13 @@ def index():
                     chat_history = []
                     session["chat_history"] = chat_history
                     upload_msg = "File uploaded! You can now chat about your document."
-                except Exception as e:
-                    error_msg = f"Error loading file: {e}"
+                except Exception:
+                    log.exception("Failed to load uploaded file")
+                    error_msg = "Sorry, that file could not be read."
                     session["uploaded"] = False
                     uploaded = False
+                finally:
+                    os.remove(fpath)
         # Chat input
         elif "send_message" in request.form and session.get("uploaded"):
             msg = request.form.get("user_message","").strip()
