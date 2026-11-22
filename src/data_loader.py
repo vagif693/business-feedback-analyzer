@@ -14,7 +14,7 @@ def load_data(filepath):
             df = pd.read_excel(filepath)
             return df
         elif ext == 'txt':
-            with open(filepath, 'r') as f:
+            with open(filepath, 'r', encoding='utf-8', errors='replace') as f:
                 text = f.read()
             return pd.DataFrame({'text_response': [text]})
         elif ext == 'pdf':
