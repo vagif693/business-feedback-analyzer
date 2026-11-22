@@ -1,0 +1,20 @@
+services:
+  app:
+    build: .
+    image: business-feedback-analyzer
+    env_file: .env
+    environment:
+      OLLAMA_URL: http://host.docker.internal:11434/api/generate
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "127.0.0.1:8000:8000"
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /app/data/uploads
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
