@@ -3,6 +3,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from flask import Flask, request, render_template, session
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
+from flask_wtf.csrf import CSRFProtect
 from src.data_loader import load_data
 from src.ollama_api import ask_ollama
 
@@ -29,6 +30,7 @@ def debug_enabled():
 
 app = Flask(__name__, template_folder="../templates", static_folder="../static")
 app.secret_key = load_secret_key()
+csrf = CSRFProtect(app)
 UPLOAD_FOLDER = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data', 'uploads'))
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
@@ -102,8 +104,9 @@ def index():
                 prompt = f"Document data:\n{session.get('file_text','')}\nUser query: {msg}"
                 try:
                     ai_resp = ask_ollama(prompt)
-                except Exception as e:
-                    ai_resp = f"AI Error: {e}"
+                except Exception:
+                    log.exception("Ollama request failed")
+                    ai_resp = "Sorry, the AI service is not available right now. Please try again."
                 chat_history.append({"role":"ai","msg":ai_resp,"time":nice_time()})
                 session["chat_history"] = chat_history
         session.modified = True
